@@ -1,8 +1,6 @@
 repeat task.wait() until game:IsLoaded()
 
--- 666 HACK - Script completo
--- Desarrollado manualmente, integrando todas las funciones sin añadidos extra
-
+-- 666 HACK — TP 3 PISOS / MEJOR VALOR
 do
 	local Players = game:GetService("Players")
 	local LP2 = Players.LocalPlayer
@@ -177,7 +175,7 @@ do
 	end
 end
 
--- Funciones principales
+-- FUNCIONES PRINCIPALES
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -204,6 +202,10 @@ local function click()
 	end)
 end
 
+-- Velocidades ajustadas
+local SPEED_STEAL_VAL = 38
+local TP_SPEED_VAL = 65
+
 local Config = {
 	AntiRagdoll = false,
 	SpeedSteal = false,
@@ -218,80 +220,7 @@ local Config = {
 
 local antiConn, jumpConn, floatConn, floatBase, dropConn, resetConn, speedControlConn
 
--- Speed Bypass integrado
-local SPEED_VAL = 32.5
-local lagConn = nil
-local lagAmount = 0
-local speedPower = 97000
-
-local function applyPower(val)
-	speedPower = math.clamp(math.floor(val), 10000, 500000)
-	local t = (speedPower - 10000) / 490000
-	lagAmount = t * 0.2
-end
-applyPower(speedPower)
-
-local function startLag()
-	if lagConn then lagConn:Disconnect() end
-	lagConn = RunService.RenderStepped:Connect(function()
-		if not Config.SpeedSteal then return end
-		if lagAmount > 0 then
-			local t = tick()
-			while tick() - t < lagAmount do end
-		end
-	end)
-end
-
-local function stopLag()
-	if lagConn then lagConn:Disconnect() lagConn = nil end
-end
-
-local function applySpeed()
-	local h = getHum()
-	if not h then return end
-	if Config.SpeedSteal then
-		h.WalkSpeed = SPEED_VAL
-		h.JumpPower = Config.BoostJump and 60 or 50
-		h.UseJumpPower = true
-		h.AutoRotate = true
-		h.PlatformStand = false
-		startLag()
-	else
-		h.WalkSpeed = 16
-		h.JumpPower = 50
-		h.UseJumpPower = true
-		stopLag()
-	end
-end
-
-local function setSpeedControl(on)
-	if speedControlConn then speedControlConn:Disconnect() speedControlConn = nil end
-	if not on then stopLag() return end
-	speedControlConn = RunService.Heartbeat:Connect(function()
-		local root = getRoot()
-		if not root then return end
-		local cam = workspace.CurrentCamera
-		local cf = cam.CFrame
-		local forward = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z).Unit
-		local right = Vector3.new(cf.RightVector.X, 0, cf.RightVector.Z).Unit
-		local moveDir = Vector3.zero
-		if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir += forward end
-		if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir -= forward end
-		if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir -= right end
-		if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir += right end
-		if moveDir.Magnitude > 0.01 then
-			moveDir = moveDir.Unit
-			root.AssemblyLinearVelocity = Vector3.new(
-				moveDir.X * SPEED_VAL,
-				root.AssemblyLinearVelocity.Y,
-				moveDir.Z * SPEED_VAL
-			)
-		end
-	end)
-	startLag()
-end
-
--- Invis Steal
+-- INVIS STEAL
 local invisData = {
 	connections = { SemiInvisible = {} },
 	isInvisible = false,
@@ -485,7 +414,7 @@ local function setInvisSteal(on)
 	end
 end
 
--- Anti Ragdoll
+-- ANTI RAGDOLL
 local cachedAnti = {}
 local function cacheCharacterAnti()
     local char = LP.Character
@@ -524,7 +453,40 @@ local function setAntiRagdoll(on)
 end
 LP.CharacterAdded:Connect(function() task.wait(0.5) if Config.AntiRagdoll then cacheCharacterAnti() end end)
 
--- Boost Jump
+-- SPEED STEAL
+local function applySpeed()
+	local h = getHum()
+	if not h then return end
+	h.WalkSpeed = Config.SpeedSteal and SPEED_STEAL_VAL or 16
+	h.JumpPower = Config.BoostJump and 60 or 50
+	h.UseJumpPower = true
+	h.AutoRotate = true
+	h.PlatformStand = false
+end
+
+local function setSpeedControl(on)
+	if speedControlConn then speedControlConn:Disconnect() speedControlConn = nil end
+	if not on then return end
+	speedControlConn = RunService.Heartbeat:Connect(function()
+		local root = getRoot()
+		if not root then return end
+		local cam = workspace.CurrentCamera
+		local cf = cam.CFrame
+		local forward = Vector3.new(cf.LookVector.X,0,cf.LookVector.Z).Unit
+		local right = Vector3.new(cf.RightVector.X,0,cf.RightVector.Z).Unit
+		local moveDir = Vector3.zero
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir += forward end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir -= forward end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir -= right end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir += right end
+		if moveDir.Magnitude > 0.01 then
+			moveDir = moveDir.Unit
+			root.AssemblyLinearVelocity = Vector3.new(moveDir.X * SPEED_STEAL_VAL, root.AssemblyLinearVelocity.Y, moveDir.Z * SPEED_STEAL_VAL)
+		end
+	end)
+end
+
+-- JUMP BOOST
 local function setBoostJump(on)
 	if jumpConn then jumpConn:Disconnect() jumpConn = nil end
 	if not on then local h = getHum() if h then h.UseJumpPower = true h.JumpPower = 50 end return end
@@ -533,11 +495,13 @@ local function setBoostJump(on)
 	jumpConn = RunService.Heartbeat:Connect(function()
 		if not Config.BoostJump then return end
 		local r = getRoot()
-		if r and r.AssemblyLinearVelocity.Y < -2 then r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, math.max(r.AssemblyLinearVelocity.Y * 0.92, -12), r.AssemblyLinearVelocity.Z) end
+		if r and r.AssemblyLinearVelocity.Y < -2 then
+			r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, math.max(r.AssemblyLinearVelocity.Y * 0.92, -12), r.AssemblyLinearVelocity.Z)
+		end
 	end)
 end
 
--- FPS Boost
+-- FPS BOOST
 local function setFPS(on)
 	if on then
 		pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 settings().Rendering.Mode = Enum.RenderMode.ForcePerformance settings().Physics.Throttle = Enum.PhysicsThrottle.Minimum end)
@@ -557,7 +521,7 @@ local function setFPS(on)
 	end
 end
 
--- Float
+-- FLOAT
 local function setFloat(on)
 	if floatConn then floatConn:Disconnect() floatConn = nil end
 	if floatBase then floatBase:Destroy() floatBase = nil end
@@ -567,27 +531,32 @@ local function setFloat(on)
 	floatBase.Name = "FloatPlatform"
 	floatBase.Shape = Enum.PartType.Block
 	floatBase.Size = Vector3.new(3.2, 0.25, 3.2)
-	floatBase.Transparency = 0.55
 	floatBase.BrickColor = BrickColor.new("Bright red")
-	floatBase.CanCollide = false; floatBase.CanTouch = false; floatBase.Massless = true
-	floatBase.Parent = workspace
-	floatConn = RunService.Heartbeat:Connect(function()
-		if not Config.Float then return end
-		local root = getRoot(); if not root then return end
-		floatBase.Position = Vector3.new(root.Position.X, root.Position.Y - 1.8, root.Position.Z)
-		floatBase.CFrame = CFrame.new(floatBase.Position)
-		if root.Position.Y < root.Position.Y + MAX_HEIGHT - 0.5 then
-			root.AssemblyLinearVelocity = Vector3.new(0, SPEED, 0)
-		else
-			root.AssemblyLinearVelocity = Vector3.zero
-		end
-	end)
+floatBase.CanCollide = false
+floatBase.CanTouch = false
+floatBase.Massless = true
+floatBase.Parent = workspace
+
+floatConn = RunService.Heartbeat:Connect(function()
+	if not Config.Float then return end
+	local root = getRoot()
+	if not root then return end
+	floatBase.Position = Vector3.new(root.Position.X, root.Position.Y - 1.8, root.Position.Z)
+	floatBase.CFrame = CFrame.new(floatBase.Position)
+	if root.Position.Y < root.Position.Y + MAX_HEIGHT - 0.5 then
+		root.AssemblyLinearVelocity = Vector3.new(0, SPEED, 0)
+	else
+		root.AssemblyLinearVelocity = Vector3.zero
+	end
+end)
 end
 
--- Drop Brainrot
+-- DROP BRAINROT
 local dropConns = {}
 local function setDropBrainrot(on)
-	for _,c in ipairs(dropConns) do if typeof(c)=="RBXScriptConnection" then c:Disconnect() end end
+	for _,c in ipairs(dropConns) do
+		if typeof(c)=="RBXScriptConnection" then c:Disconnect() end
+	end
 	dropConns = {}
 	if not on then return end
 	task.spawn(function()
@@ -606,7 +575,8 @@ local function setDropBrainrot(on)
 	end)
 end
 
--- Auto Reset
+-- AUTO RESET
+local resetConn
 local function setAutoReset(on)
 	if resetConn then resetConn:Disconnect() resetConn = nil end
 	if not on then return end
@@ -621,7 +591,7 @@ local function setAutoReset(on)
 	end)
 end
 
--- Bloqueo de prompts de pago
+-- BLOQUEO ROBUX
 local function blockRobuxPrompts()
 	local blockList = {"abrir base", "unlock base", "buy", "comprar", "cobrar", "robux", "open base", "desbloquear", "purchase", "pay", "cost"}
 	local function isBadPrompt(text)
@@ -634,12 +604,20 @@ local function blockRobuxPrompts()
 		while true do
 			task.wait(0.25)
 			for _, v in ipairs(workspace:GetDescendants()) do
-				if v:IsA("ProximityPrompt") and isBadPrompt(v.ActionText) then v.Enabled = false v.Triggered:DisconnectAll() v.Name = "BLOCKED_SAFE" end
+				if v:IsA("ProximityPrompt") and isBadPrompt(v.ActionText) then
+					v.Enabled = false
+					v.Triggered:DisconnectAll()
+					v.Name = "BLOCKED_SAFE"
+				end
 			end
 			for _, v in ipairs(PlayerGui:GetDescendants()) do
 				if v:IsA("TextButton") or v:IsA("ImageButton") then
 					local txt = ((v.Text or ""):lower() .. (v.Name or ""):lower())
-					if isBadPrompt(txt) then v.Active = false v.Interactable = false v.BackgroundTransparency = 1 end
+					if isBadPrompt(txt) then
+						v.Active = false
+						v.Interactable = false
+						v.BackgroundTransparency = 1
+					end
 				end
 			end
 		end
@@ -647,7 +625,7 @@ local function blockRobuxPrompts()
 end
 blockRobuxPrompts()
 
--- Auto Grab
+-- AUTO GRAB
 local PlayersAG = game:GetService("Players")
 local RunServiceAG = game:GetService("RunService")
 local lpAG = PlayersAG.LocalPlayer
@@ -682,7 +660,9 @@ local function findNearestPrompt()
 				local att = spawn:FindFirstChild("PromptAttachment")
 				if att then
 					for _, p in ipairs(att:GetChildren()) do
-						if p:IsA("ProximityPrompt") and p.ActionText and p.ActionText:find("Steal") then nearest, dist = p, d end
+						if p:IsA("ProximityPrompt") and p.ActionText and p.ActionText:find("Steal") then
+							nearest, dist = p, d
+						end
 					end
 				end
 			end
@@ -696,8 +676,12 @@ local function executeSteal(prompt)
 	if not StealDataAG[prompt] then
 		StealDataAG[prompt] = {hold = {}, trigger = {}, ready = true}
 		if getconnections then
-			for _, c in ipairs(getconnections(prompt.PromptButtonHoldBegan)) do if c.Function then table.insert(StealDataAG[prompt].hold, c.Function) end end
-			for _, c in ipairs(getconnections(prompt.Triggered)) do if c.Function then table.insert(StealDataAG[prompt].trigger, c.Function) end end
+			for _, c in ipairs(getconnections(prompt.PromptButtonHoldBegan)) do
+				if c.Function then table.insert(StealDataAG[prompt].hold, c.Function) end
+			end
+			for _, c in ipairs(getconnections(prompt.Triggered)) do
+				if c.Function then table.insert(StealDataAG[prompt].trigger, c.Function) end
+			end
 		end
 	end
 	local data = StealDataAG[prompt]; if not data.ready then return end
@@ -722,7 +706,7 @@ local function setAutoGrab(on)
 	end)
 end
 
--- Teleport mejor valor - 3 pisos
+-- TP 3 PISOS / MEJOR VALOR
 local flying, flyConn, active = false, nil, false
 
 local function parseMoney(str)
@@ -809,7 +793,6 @@ local function findBest()
 						local spawn = base and base:FindFirstChild("Spawn")
 						local part = spawn or pod:FindFirstChildWhichIsA("BasePart", true)
 						local total, gen, rar = score(pod)
-						print("[SCAN]", pod.Name, "gen=", gen, "rar=", rar, "Y=", part and math.floor(part.Position.Y) or "?")
 						if total > bestScore and part then
 							bestScore = total
 							best = { part = part, prompt = prompt, name = pod.Name, gen = gen }
@@ -819,7 +802,6 @@ local function findBest()
 			end
 		end
 	end
-	if best then print(">>> MEJOR:", best.name, best.gen) end
 	return best
 end
 
@@ -850,7 +832,7 @@ local function startFly()
 
 	flying = true
 	local target, prompt = best.part, best.prompt
-	local speed = 58
+	local speed = TP_SPEED_VAL
 	local arrived = false
 
 	flyConn = RunService.Heartbeat:Connect(function()
@@ -883,7 +865,8 @@ local function startFly()
 						end
 						if prompt then
 							pcall(function()
-								if fireproximityprompt then fireproximityprompt(prompt)
+								if fireproximityprompt then
+									fireproximityprompt(prompt)
 								else
 									prompt:InputHoldBegin()
 									task.wait(0.9)
@@ -913,7 +896,7 @@ local function startFly()
 	end)
 end
 
--- Protección de vida
+-- Anti muerte
 RunService.Heartbeat:Connect(function()
 	local hum = getHum()
 	if hum and hum.Health > 0 and hum.Health < hum.MaxHealth * 0.25 then
@@ -921,13 +904,13 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
--- Reinicio al respawnear
+-- Reactivar tras respawn
 LP.CharacterAdded:Connect(function()
 	task.wait(1)
 	if active then startFly() end
 end)
 
--- Interfaz
+-- INTERFAZ
 local MainGui = Instance.new("ScreenGui")
 MainGui.Name = "666_HACK"
 MainGui.ResetOnSpawn = false
@@ -968,7 +951,7 @@ Title.Parent = Panel
 
 MainBtn.MouseButton1Click:Connect(function() click() Panel.Visible = not Panel.Visible end)
 
--- Botones laterales
+-- Botones lado derecho
 local function makeSideBtn(name,y,configKey,func)
 	local b = Instance.new("TextButton")
 	b.Size = UDim2.new(0,44,0,44)
@@ -1003,7 +986,7 @@ end
 makeSideBtn("DROP", 10, "DropBrainrot", function() setDropBrainrot(Config.DropBrainrot) end)
 makeSideBtn("RESET", 62, "AutoReset", function() setAutoReset(Config.AutoReset) end)
 makeSideBtn("FLOAT", 114, "Float", function() setFloat(Config.Float) end)
-makeSideBtn("BEST", 166, "Teleport", function() end)
+makeSideBtn("TP", 166, "Teleport", function() end)
 makeSideBtn("INVIS", 218, "InvisSteal", function() setInvisSteal(Config.InvisSteal) end)
 
 -- Botones del panel
@@ -1033,4 +1016,4 @@ makeToggle("BoostJump", "BoostJump", 94, function() setBoostJump(Config.BoostJum
 makeToggle("AutoGrab", "AutoGrab", 126, function() setAutoGrab(Config.AutoGrab) end)
 makeToggle("FPSBoost", "FPSBoost", 158, function() setFPS(Config.FPSBoost) end)
 
-print("Script cargado correctamente")
+print("TP 3 PISOS / MEJOR VALOR — ACTIVO")
